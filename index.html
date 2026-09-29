@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, viewport-fit=cover"
+>
+
+<title>ฮีโร่พิชิตคอ บ่า ไหล่</title>
+
+
+<!-- =========================
+     PHASER
+========================= -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
+
+
+<!-- =========================
+     TENSORFLOW
+========================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+
+
+<!-- =========================
+     GOOGLE FONT
+========================= -->
+
+<link
+  rel="preconnect"
+  href="https://fonts.googleapis.com"
+>
+
+<link
+  rel="preconnect"
+  href="https://fonts.gstatic.com"
+  crossorigin
+>
+
+<link
+  href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&family=Bungee&display=swap"
+  rel="stylesheet"
+>
+
+
+<style>
+
+/* =========================================================
+   THEME
+========================================================= */
+
+:root{
+
+  --bg:#050816;
+
+  --panel:#111936;
+
+  --accent:#4ade80;
+
+  --accent2:#facc15;
+
+  --gold:#fde047;
+
+  --text:#f1f5f9;
+
+  --muted:#94a3b8;
+
+}
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+*{
+  box-sizing:border-box;
+}
+
+
+/* =========================================================
+   HTML / BODY
+========================================================= */
+
+html,
+body{
+
+  width:100%;
+
+  min-height:100%;
+
+  margin:0;
+
+  padding-top:
+    env(
+      safe-area-inset-top,
+      0px
+    );
+
+  padding-bottom:
+    env(
+      safe-area-inset-bottom,
+      0px
+    );
+
+  background:
+
+    radial-gradient(
+      circle at top,
+      #172554 0%,
+      #050816 55%,
+      #02030a 100%
+    );
+
+  color:var(--text);
+
+  font-family:
+    'Kanit',
+    'Segoe UI',
+    sans-serif;
+
+}
+
+
+body{
+
+  display:flex;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  justify-content:center;
+
+  min-height:100vh;
+
+  overflow:hidden;
+
+}
+
+
+/* =========================================================
+   TOP TITLE
+========================================================= */
+
+h1{
+
+  font-family:
+    'Bungee',
+    'Kanit',
+    cursive;
+
+  font-size:16px;
+
+  letter-spacing:.5px;
+
+  margin:7px 0;
+
+  text-align:center;
+
+  background:
+
+    linear-gradient(
+      180deg,
+      #fde047,
+      #f59e0b
+    );
+
+  -webkit-background-clip:text;
+
+  background-clip:text;
+
+  color:transparent;
+
+  text-shadow:
+    0 4px 18px #f59e0b33;
+
+}
+
+
+/* =========================================================
+   GAME STAGE
+   NEW SIZE: 460 x 700
+========================================================= */
+
+#stage{
+
+  position:relative;
+
+  /*
+    ใหญ่ขึ้นจากเดิม 420px
+  */
+
+  width:min(
+    96vw,
+    460px
+  );
+
+  /*
+    อัตราส่วนใหม่
+    460 / 700
+  */
+
+  aspect-ratio:460 / 700;
+
+  /*
+    กันไม่ให้เกมล้นจอ
+  */
+
+  max-height:
+    calc(
+      100vh - 55px
+    );
+
+  border-radius:20px;
+
+  overflow:hidden;
+
+  background-image:
+
+    linear-gradient(
+      180deg,
+      rgba(3,7,18,.05),
+      rgba(3,7,18,.25)
+    ),
+
+    url('background.png');
+
+  background-size:cover;
+
+  background-position:center;
+
+  background-repeat:no-repeat;
+
+  box-shadow:
+
+    0 0 0 1px #ffffff20,
+
+    0 10px 40px #000b,
+
+    0 0 60px #1d4ed833;
+
+}
+
+
+/* =========================================================
+   CAMERA / SKELETON / PHASER
+========================================================= */
+
+video,
+#skel,
+#phaser-container{
+
+  position:absolute;
+
+  inset:0;
+
+  width:100%;
+
+  height:100%;
+
+}
+
+
+video{
+
+  display:none;
+
+}
+
+
+#phaser-container{
+
+  z-index:1;
+
+  pointer-events:none;
+
+}
+
+
+#phaser-container canvas{
+
+  position:absolute;
+
+  inset:0;
+
+  width:100% !important;
+
+  height:100% !important;
+
+}
+
+
+/* =========================================================
+   VIGNETTE
+========================================================= */
+
+#stage::after{
+
+  content:"";
+
+  position:absolute;
+
+  inset:0;
+
+  pointer-events:none;
+
+  z-index:3;
+
+  background:
+
+    radial-gradient(
+      ellipse at center,
+      transparent 48%,
+      rgba(0,0,0,.42) 100%
+    );
+
+}
+
+
+/* =========================================================
+   OVERLAY BASE
+========================================================= */
+
+.overlay{
+
+  position:absolute;
+
+  inset:0;
+
+  display:flex;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  justify-content:center;
+
+  text-align:center;
+
+  padding:20px;
+
+  z-index:5;
+
+  background:
+
+    radial-gradient(
+      ellipse at top,
+      #1e293bee 0%,
+      #020617f5 78%
+    );
+
+}
+
+
+/* =========================================================
+   OVERLAY TEXT
+========================================================= */
+
+.overlay p{
+
+  font-size:15px;
+
+  line-height:1.6;
+
+  max-width:340px;
+
+}
+
+
+/* =========================================================
+   START SCREEN
+========================================================= */
+
+#startOverlay{
+
+  background-image:
+
+    linear-gradient(
+      180deg,
+      rgba(2,6,23,.04) 0%,
+      rgba(2,6,23,.08) 40%,
+      rgba(2,6,23,.82) 100%
+    ),
+
+    url('hero-neck-shoulder-logo.png');
+
+  background-size:cover;
+
+  background-position:center;
+
+  background-repeat:no-repeat;
+
+  justify-content:flex-end;
+
+  padding:
+
+    20px
+
+    18px
+
+    28px;
+
+}
+
+
+/* =========================================================
+   HIDE DUPLICATE TITLE
+========================================================= */
+
+#startOverlay .gameTitle,
+#startOverlay .tagline{
+
+  display:none;
+
+}
+
+
+/* =========================================================
+   START DESCRIPTION
+========================================================= */
+
+#startOverlay > p:not(.gameTitle):not(.tagline){
+
+  max-width:360px;
+
+  margin:
+
+    0
+
+    0
+
+    10px;
+
+  padding:
+
+    12px
+
+    15px;
+
+  border-radius:16px;
+
+  background:
+
+    rgba(
+      3,
+      7,
+      18,
+      .78
+    );
+
+  border:
+
+    1px solid
+    rgba(
+      250,
+      204,
+      21,
+      .45
+    );
+
+  box-shadow:
+
+    0 8px 25px #0008,
+
+    inset 0 1px 0 #ffffff12;
+
+  font-size:14px;
+
+  line-height:1.65;
+
+}
+
+
+/* =========================================================
+   BUTTON
+========================================================= */
+
+button{
+
+  position:relative;
+
+  z-index:10;
+
+  border:none;
+
+  border-radius:14px;
+
+  padding:
+
+    13px
+
+    26px;
+
+  margin-top:12px;
+
+  font-family:
+    'Kanit',
+    sans-serif;
+
+  font-weight:800;
+
+  font-size:16px;
+
+  cursor:pointer;
+
+  color:#04210f;
+
+  background:
+
+    linear-gradient(
+      135deg,
+      #4ade80,
+      #16a34a
+    );
+
+  box-shadow:
+
+    0 4px 0 #14532d,
+
+    0 6px 20px #16a34a55;
+
+  transition:
+
+    transform .1s ease,
+
+    filter .15s ease;
+
+}
+
+
+button:hover{
+
+  filter:brightness(1.08);
+
+}
+
+
+button:active{
+
+  transform:
+    translateY(3px);
+
+  box-shadow:
+
+    0 1px 0 #14532d,
+
+    0 2px 8px #16a34a55;
+
+}
+
+
+/* =========================================================
+   START BUTTON
+========================================================= */
+
+#startBtn{
+
+  min-width:220px;
+
+  font-size:18px;
+
+  border:
+
+    2px solid
+    #fef08a;
+
+  color:#422006;
+
+  background:
+
+    linear-gradient(
+      135deg,
+      #fde047,
+      #f59e0b
+    );
+
+  box-shadow:
+
+    0 4px 0 #92400e,
+
+    0 0 25px #facc1566;
+
+}
+
+
+#startBtn:active{
+
+  box-shadow:
+
+    0 1px 0 #92400e,
+
+    0 2px 8px #facc1544;
+
+}
+
+
+/* =========================================================
+   CAMERA HINT
+========================================================= */
+
+#hint{
+
+  font-size:12px;
+
+  opacity:.85;
+
+  margin-top:8px;
+
+  padding:
+
+    5px
+
+    10px;
+
+  border-radius:8px;
+
+  background:
+
+    rgba(
+      0,
+      0,
+      0,
+      .48
+    );
+
+  color:#e2e8f0;
+
+}
+
+
+/* =========================================================
+   GAME TITLE
+========================================================= */
+
+.gameTitle{
+
+  font-family:
+    'Bungee',
+    cursive;
+
+  font-size:25px;
+
+  line-height:1.35;
+
+  background:
+
+    linear-gradient(
+      180deg,
+      #fde047,
+      #f59e0b
+    );
+
+  -webkit-background-clip:text;
+
+  background-clip:text;
+
+  color:transparent;
+
+  text-shadow:
+
+    0 6px 18px #00000080;
+
+  margin-bottom:4px;
+
+}
+
+
+.tagline{
+
+  font-size:12px;
+
+  color:#94a3b8;
+
+  margin-bottom:6px;
+
+}
+
+
+/* =========================================================
+   VS SCREEN
+========================================================= */
+
+#vsOverlay{
+
+  background:
+
+    radial-gradient(
+      circle at center,
+      #312e81 0%,
+      #0f172a 50%,
+      #020617 100%
+    );
+
+}
+
+
+#vsOverlay::before{
+
+  content:"";
+
+  position:absolute;
+
+  inset:0;
+
+  background:
+
+    radial-gradient(
+      circle,
+      transparent 30%,
+      #0008 100%
+    );
+
+  pointer-events:none;
+
+}
+
+
+.vsText{
+
+  font-size:38px;
+
+  font-weight:900;
+
+  color:#fde047;
+
+  text-shadow:
+
+    0 0 14px #f59e0b,
+
+    0 0 30px #f59e0b66;
+
+  animation:
+
+    vsPulse 1s ease-in-out infinite;
+
+}
+
+
+@keyframes vsPulse{
+
+  0%,
+  100%{
+
+    transform:scale(1);
+
+  }
+
+  50%{
+
+    transform:scale(1.12);
+
+  }
+
+}
+
+
+/* =========================================================
+   STORY
+========================================================= */
+
+#storyOverlay{
+
+  background:
+
+    linear-gradient(
+      160deg,
+      #172554f5,
+      #020617f8
+    );
+
+}
+
+
+#storyOverlay::before{
+
+  content:"⚡";
+
+  position:absolute;
+
+  top:55px;
+
+  left:25px;
+
+  font-size:40px;
+
+  opacity:.18;
+
+  transform:rotate(-15deg);
+
+}
+
+
+#storyOverlay::after{
+
+  content:"⚡";
+
+  position:absolute;
+
+  bottom:60px;
+
+  right:25px;
+
+  font-size:50px;
+
+  opacity:.14;
+
+  transform:rotate(15deg);
+
+}
+
+
+#storyText{
+
+  position:relative;
+
+  z-index:2;
+
+  padding:
+
+    18px
+
+    20px;
+
+  border-radius:18px;
+
+  background:
+
+    rgba(
+      15,
+      23,
+      42,
+      .82
+    );
+
+  border:
+
+    1px solid
+    rgba(
+      74,
+      222,
+      128,
+      .35
+    );
+
+  box-shadow:
+
+    0 10px 35px #0008;
+
+}
+
+
+/* =========================================================
+   KO SCREEN
+========================================================= */
+
+#koOverlay{
+
+  background:
+
+    repeating-conic-gradient(
+      from 0deg,
+      #1e1b4b 0deg 6deg,
+      #0a0a0a 6deg 12deg
+    );
+
+}
+
+
+.flash{
+
+  position:absolute;
+
+  inset:0;
+
+  background:#fff;
+
+  animation:
+
+    flashOut .5s ease-out forwards;
+
+}
+
+
+@keyframes flashOut{
+
+  to{
+
+    opacity:0;
+
+  }
+
+}
+
+
+.kotext{
+
+  font-size:44px;
+
+  font-weight:900;
+
+  color:#facc15;
+
+  text-shadow:
+
+    0 0 16px #dc2626,
+
+    0 0 35px #dc262688;
+
+  animation:
+
+    pop .5s ease-out;
+
+  position:relative;
+
+  z-index:1;
+
+}
+
+
+@keyframes pop{
+
+  0%{
+
+    transform:scale(.3);
+
+    opacity:0;
+
+  }
+
+  60%{
+
+    transform:scale(1.15);
+
+    opacity:1;
+
+  }
+
+  100%{
+
+    transform:scale(1);
+
+  }
+
+}
+
+
+/* =========================================================
+   VICTORY SCREEN
+========================================================= */
+
+#victoryOverlay{
+
+  background:
+
+    radial-gradient(
+      circle at center,
+      #166534 0%,
+      #052e1a 35%,
+      #0b1020 100%
+    );
+
+}
+
+
+#victoryOverlay::before{
+
+  content:"🏆";
+
+  position:absolute;
+
+  top:55px;
+
+  font-size:75px;
+
+  opacity:.16;
+
+}
+
+
+#victoryText{
+
+  position:relative;
+
+  z-index:2;
+
+  padding:
+
+    16px
+
+    18px;
+
+  border-radius:18px;
+
+  background:
+
+    rgba(
+      2,
+      6,
+      23,
+      .55
+    );
+
+  border:
+
+    1px solid
+    #4ade8066;
+
+  box-shadow:
+
+    0 10px 35px #0008;
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width:600px){
+
+  h1{
+
+    font-size:14px;
+
+    margin:
+
+      4px
+
+      0;
+
+  }
+
+
+  #stage{
+
+    width:
+
+      min(
+        96vw,
+        460px
+      );
+
+    border-radius:18px;
+
+  }
+
+
+  .overlay{
+
+    padding:16px;
+
+  }
+
+
+  #startOverlay{
+
+    padding:
+
+      16px
+
+      14px
+
+      24px;
+
+  }
+
+
+  #startOverlay > p:not(.gameTitle):not(.tagline){
+
+    max-width:370px;
+
+    font-size:14px;
+
+  }
+
+}
+
+
+/* =========================================================
+   VERY SMALL HEIGHT
+========================================================= */
+
+@media (max-height:750px){
+
+  body{
+
+    justify-content:flex-start;
+
+  }
+
+
+  h1{
+
+    margin:
+
+      3px
+
+      0;
+
+    font-size:13px;
+
+  }
+
+
+  #stage{
+
+    width:
+
+      min(
+        96vw,
+        460px
+      );
+
+    /*
+      บนจอเตี้ยให้ลดขนาดทั้งเกม
+      โดยยังคงสัดส่วน 460:700
+    */
+
+    max-height:
+
+      calc(
+        100vh - 35px
+      );
+
+  }
+
+
+  #startOverlay{
+
+    padding:
+
+      10px
+
+      12px
+
+      18px;
+
+  }
+
+
+  #startOverlay > p:not(.gameTitle):not(.tagline){
+
+    font-size:12px;
+
+    line-height:1.5;
+
+    padding:
+
+      8px
+
+      10px;
+
+    margin-bottom:5px;
+
+  }
+
+
+  #startBtn{
+
+    margin-top:6px;
+
+    padding:
+
+      10px
+
+      20px;
+
+    font-size:15px;
+
+  }
+
+
+  #hint{
+
+    margin-top:5px;
+
+  }
+
+}
+
+
+/* =========================================================
+   EXTRA SMALL PHONE
+========================================================= */
+
+@media (max-width:380px){
+
+  h1{
+
+    font-size:12px;
+
+  }
+
+
+  #stage{
+
+    width:94vw;
+
+  }
+
+
+  #startOverlay > p:not(.gameTitle):not(.tagline){
+
+    font-size:11px;
+
+    max-width:320px;
+
+  }
+
+
+  #startBtn{
+
+    min-width:190px;
+
+    font-size:16px;
+
+  }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     TOP TITLE
+========================================================= -->
+
+<h1>
+  🦸 ฮีโร่พิชิตคอ บ่า ไหล่
+</h1>
+
+
+<!-- =========================================================
+     GAME
+========================================================= -->
+
+<div id="stage">
+
+
+  <!-- =========================
+       CAMERA
+  ========================= -->
+
+  <video
+    id="vid"
+    autoplay
+    playsinline
+    muted
+  ></video>
+
+
+  <!-- =========================
+       SKELETON
+       NEW SIZE 460 x 700
+  ========================= -->
+
+  <canvas
+    id="skel"
+    width="460"
+    height="700"
+  ></canvas>
+
+
+  <!-- =========================
+       CAMERA VIGNETTE
+  ========================= -->
+
+  <div
+    style="
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(
+          ellipse at center,
+          transparent 58%,
+          #00000090 100%
+        );
+      z-index:2;
+    "
+  ></div>
+
+
+  <!-- =========================
+       PHASER
+  ========================= -->
+
+  <div id="phaser-container"></div>
+
+
+  <!-- =====================================================
+       START SCREEN
+  ===================================================== -->
+
+  <div
+    class="overlay"
+    id="startOverlay"
+  >
+
+    <p>
+      เมืองกำลังถูกจอมมารเมื่อยล้าบุก!
+      ทำท่าฝึกร่างกายให้ถูกและค้างไว้ให้ครบเวลา
+      พลังฮีโร่จะยิงใส่ศัตรูให้เอง!
+    </p>
+
+
+    <button id="startBtn">
+      ▶ เริ่มเกม
+    </button>
+
+
+    <div id="hint">
+      อนุญาตให้ใช้กล้องเมื่อเบราว์เซอร์ถาม
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       VS SCREEN
+  ===================================================== -->
+
+  <div
+    class="overlay"
+    id="vsOverlay"
+    style="display:none;"
+  >
+
+    <div
+      style="
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:14px;
+        position:relative;
+        z-index:2;
+      "
+    >
+
+      <span
+        style="
+          font-size:44px;
+          filter:drop-shadow(0 0 12px #4ade80);
+        "
+      >
+        🦸
+      </span>
+
+
+      <span class="vsText">
+        VS
+      </span>
+
+
+      <span
+        style="
+          font-size:44px;
+          filter:drop-shadow(0 0 12px #ef4444);
+        "
+      >
+        👹
+      </span>
+
+    </div>
+
+
+    <p>
+      จอมมารเมื่อยล้าปรากฏตัวกลางเมือง!
+      เตรียมพร้อมต่อสู้!
+    </p>
+
+
+    <button id="vsBtn">
+      ⚔ เข้าสู่สนามรบ!
+    </button>
+
+  </div>
+
+
+  <!-- =====================================================
+       KO SCREEN
+  ===================================================== -->
+
+  <div
+    class="overlay"
+    id="koOverlay"
+    style="display:none;"
+  >
+
+    <div
+      class="flash"
+      id="koFlash"
+    ></div>
+
+
+    <p class="kotext">
+      น็อก!!
+    </p>
+
+  </div>
+
+
+  <!-- =====================================================
+       STORY SCREEN
+  ===================================================== -->
+
+  <div
+    class="overlay"
+    id="storyOverlay"
+    style="display:none;"
+  >
+
+    <p id="storyText"></p>
+
+
+    <button id="storyBtn">
+      ➤ ไปกันเลย!
+    </button>
+
+  </div>
+
+
+  <!-- =====================================================
+       VICTORY SCREEN
+  ===================================================== -->
+
+  <div
+    class="overlay"
+    id="victoryOverlay"
+    style="display:none;"
+  >
+
+    <p
+      style="
+        font-size:22px;
+        position:relative;
+        z-index:2;
+      "
+    >
+      🎉 🦸 🎉
+    </p>
+
+
+    <p
+      id="victoryText"
+      style="
+        font-size:17px;
+        font-weight:700;
+      "
+    ></p>
+
+
+    <button id="victoryBtn">
+      ↻ เล่นใหม่อีกครั้ง
+    </button>
+
+  </div>
+
+
+</div>
+
+
+<!-- =========================================================
+     MAIN GAME JAVASCRIPT
+========================================================= -->
+
+<script src="main.js"></script>
+
+
+</body>
+
+</html>
